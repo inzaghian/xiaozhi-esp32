@@ -15,6 +15,7 @@
 #include <esp_lcd_touch_ft5x06.h>
 #include <esp_lvgl_port.h>
 #include <lvgl.h>
+#include "qmi8658.h"
 
 
 #define TAG "LichuangDevBoard"
@@ -75,6 +76,7 @@ private:
     LcdDisplay* display_;
     Pca9557* pca9557_;
     Esp32Camera* camera_;
+    Qmi8658* qmi8658_;
 
     void InitializeI2c() {
         // Initialize I2C peripheral
@@ -94,6 +96,16 @@ private:
 
         // Initialize PCA9557
         pca9557_ = new Pca9557(i2c_bus_, 0x19);
+        qmi8658_ = new Qmi8658(i2c_bus_, 0x6A);
+        qmi8658c_config_t config =
+        {
+            .mode = QMI8658C_MODE_DUAL,
+            .acc_scale = QMI8658C_ACC_SCALE_16G,
+            .acc_odr = QMI8658C_ACC_ODR_125,
+            .gyro_scale = QMI8658C_GYRO_SCALE_2048DPS,
+            .gyro_odr = QMI8658C_GYRO_ODR_125,
+        };
+        qmi8658_->setup(&config);
     }
 
     void InitializeSpi() {
@@ -114,6 +126,40 @@ private:
                 ResetWifiConfiguration();
             }
             app.ToggleChatState();
+
+            qmi8658c_data_t data;
+            qmi8658_->read_data(&data);
+            ESP_LOGI(TAG,"acc=%f:%f:%f",data.acc.x,data.acc.y,data.acc.z);
+            ESP_LOGI(TAG,"gyro=%f:%f:%f",data.gyro.x,data.gyro.y,data.gyro.z);
+            ESP_LOGI(TAG,"temp=%f",data.temperature);
+            
+
+            // if (app.GetDeviceState() == kDeviceStateListening ) {
+                // std::string payload = "{\"jsonrpc\":\"2.0\",\"id\":1001,\"method\": \"tools/call\",\"params\": {\"name\": \"self.get_device_status\",\"arguments\": {}}}";
+                // std::string payload = R"({
+                // \"jsonrpc\": \"2.0\",
+                // "id": 1001,
+                // "method": "tools/call",
+                // "params": {
+                //     "name": "self.get_device_status",
+                //     "arguments": {}
+                // }
+                // })";
+
+                // 主动发送 MCP 请求
+                // uint32_t id = 1000;
+                // std::string result = "true";
+                // std::string payload = "{\"jsonrpc\":\"2.0\",\"id\":";
+                // payload += std::to_string(id) + ",\"result\":";
+                // payload += result;
+                // payload += "}";
+                // app.SendMcpMessage(payload);
+                // auto network = Board::GetInstance().GetNetwork();
+                // std::unique_ptr<HttpClient> http;
+                // http = network->CreateHttp(3);
+                // http.SetHeader()
+                // ESP_LOGI(TAG, "sending mcp:%s",payload.c_str());
+            // }
         });
 
 #if CONFIG_USE_DEVICE_AEC
@@ -249,6 +295,20 @@ public:
         InitializeCamera();
 
         GetBacklight()->RestoreBrightness();
+        // auto senser = new Qmi8658(i2c_bus_, DEFAUL_QMI8658C_ADDR);
+        // qmi8658c_config_t config =
+        // {
+        //     .mode = QMI8658C_MODE_DUAL,
+        //     .acc_scale = QMI8658C_ACC_SCALE_4G,
+        //     .acc_odr = QMI8658C_ACC_ODR_1000,
+        //     .gyro_scale = QMI8658C_GYRO_SCALE_64DPS,
+        //     .gyro_odr = QMI8658C_GYRO_ODR_8000,
+        // };
+        // senser->setup(&config);
+        // qmi8658c_data_t data;
+        // senser->read_data(&data);
+        // ESP_LOGI(TAG,"data=%f:%f:%f",data.acc.x,data.acc.y,data.acc.z);
+        // ESP_LOGI(TAG,"data=%f:%f:%f",data.gyro.x,data.gyro.y,data.gyro.z);
     }
 
     virtual AudioCodec* GetAudioCodec() override {
