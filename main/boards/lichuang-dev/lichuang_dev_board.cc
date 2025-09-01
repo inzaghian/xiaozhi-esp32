@@ -126,12 +126,15 @@ private:
                 ResetWifiConfiguration();
             }
             app.ToggleChatState();
+            // app.SaveMsg("小智nihao");
 
-            qmi8658c_data_t data;
-            qmi8658_->read_data(&data);
-            ESP_LOGI(TAG,"acc=%f:%f:%f",data.acc.x,data.acc.y,data.acc.z);
-            ESP_LOGI(TAG,"gyro=%f:%f:%f",data.gyro.x,data.gyro.y,data.gyro.z);
-            ESP_LOGI(TAG,"temp=%f",data.temperature);
+            // qmi8658c_data_t data;
+            // qmi8658_->read_data(&data);
+            // ESP_LOGI(TAG,"acc=%f:%f:%f",data.acc.x,data.acc.y,data.acc.z);
+            // ESP_LOGI(TAG,"gyro=%f:%f:%f",data.gyro.x,data.gyro.y,data.gyro.z);
+            // ESP_LOGI(TAG,"temp=%f",data.temperature);
+            // app.FeishuMsgSend("测试测试 学c++");
+            // app.MealSearch("中关村");
             
 
             // if (app.GetDeviceState() == kDeviceStateListening ) {

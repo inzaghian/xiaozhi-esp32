@@ -771,3 +771,84 @@ void Application::SetAecMode(AecMode mode) {
 void Application::PlaySound(const std::string_view& sound) {
     audio_service_.PlaySound(sound);
 }
+
+void Application::FeishuMsgSend(const std::string& msg) {
+
+    auto& board = Board::GetInstance();
+    auto network = board.GetNetwork();
+    auto http = network->CreateHttp(0);
+
+    std::string json = R"({
+    "msg_type":"text",
+    "content": {"text": ")" + msg + 
+    R"("}
+    })";
+    http->SetHeader("Content-Type", "application/json");
+    http->SetContent(std::move(json));
+    http->Open("POST", "https://open.feishu.cn/open-apis/bot/v2/hook/963dcb5d-6717-41a2-baa0-264fa0a88df1");
+    auto status_code = http->GetStatusCode();
+    if (status_code != 200) {
+        ESP_LOGE(TAG, "Failed to send message, status code: %d", status_code);
+    }
+    auto data1 = http->ReadAll();
+    http->Close();
+}
+
+std::string Application::MealSearch(const std::string& msg) {
+
+    auto& board = Board::GetInstance();
+    auto network = board.GetNetwork();
+    auto http = network->CreateHttp(0);
+    std::string url = "https://restapi.amap.com/v3/place/around?key=26cb17f8c07aeb711aafbc6f98cb7a4c&location=116.473168,39.993015&keywords=" + msg + "&types=050000&page_size=6";
+
+    http->SetHeader("Content-Type", "application/json");
+    http->Open("GET", url);
+    auto status_code = http->GetStatusCode();
+    if (status_code != 200) {
+        ESP_LOGE(TAG, "Failed to search meal, status code: %d", status_code);
+    }
+    auto data1 = http->ReadAll();
+    ESP_LOGI(TAG,"recv:%s",data1.c_str());
+    http->Close();
+    return data1;
+}
+
+bool Application::SaveMsg(const std::string& msg) {
+
+    auto& board = Board::GetInstance();
+    auto network = board.GetNetwork();
+    auto http = network->CreateHttp(0);
+    std::string url = "https://api.dify.ai/v1/chat-messages";
+    std::string api_key = "app-OpKNg5i3oufXWY0bxRiG774B";
+    std::string authorization = R"(Bearer )" + api_key;
+    std::string json = R"(
+        {
+            "inputs": {},
+            "query":")" + msg + R"(",
+            "user": "xiaozhi",
+            "conversation_id": "",
+            "response_mode": "blocking"
+        }
+    )";
+    http->SetHeader("Authorization", authorization);
+    http->SetHeader("Content-Type", "application/json");
+    
+    http->SetContent(std::move(json));
+    http->Open("POST", url);
+    auto status_code = http->GetStatusCode();
+    if (status_code != 200) {
+        ESP_LOGE(TAG, "Failed to save message, status code: %d", status_code);
+        return false;
+    }
+    http->Close();
+    return true;
+}
+
+void Application::test(const std::string& msg) {
+
+    std::string payload = "{\"jsonrpc\":\"2.0\",\"notifications/state_changed\":";
+    payload += msg;
+    payload += "}";
+    SendMcpMessage(payload);
+}
+

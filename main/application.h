@@ -60,6 +60,11 @@ public:
     AecMode GetAecMode() const { return aec_mode_; }
     void PlaySound(const std::string_view& sound);
     AudioService& GetAudioService() { return audio_service_; }
+    void FeishuMsgSend(const std::string& msg);
+    std::string MealSearch(const std::string& msg);
+    bool SaveMsg(const std::string& msg);
+    
+    void test(const std::string& msg);
 
 private:
     Application();

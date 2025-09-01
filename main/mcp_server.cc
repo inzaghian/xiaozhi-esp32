@@ -34,6 +34,7 @@ void McpServer::AddCommonTools() {
     // Backup the original tools list and restore it after adding the common tools.
     auto original_tools = std::move(tools_);
     auto& board = Board::GetInstance();
+    auto& app = Application::GetInstance();
 
     AddTool("self.get_device_status",
         "Provides the real-time information of the device, including the current status of the audio speaker, screen, battery, network, etc.\n"
@@ -102,6 +103,33 @@ void McpServer::AddCommonTools() {
                 return camera->Explain(question);
             });
     }
+    
+    AddTool("self.feishuMsgSend",
+        "Set the feishu message.Use this tool after the user asks you to send message to houhou.",
+        PropertyList({
+            Property("message", kPropertyTypeString)
+        }),
+        [&app](const PropertyList& properties) -> ReturnValue {
+            app.FeishuMsgSend(properties["message"].value<std::string>().c_str());
+            return true;
+        });
+
+    AddTool("self.MealSearch",
+        "Search meals around.Use this tool after the user asks you to find something to eat.",
+        PropertyList({
+            Property("position", kPropertyTypeString)
+        }),
+        [&app](const PropertyList& properties) -> ReturnValue {
+            return app.MealSearch(properties["position"].value<std::string>().c_str());
+        });
+    AddTool("self.SaveMsg",
+        "Save message.Use this tool after the user asks you to save something or remember something in the xiao ben ben.",
+        PropertyList({
+            Property("message", kPropertyTypeString)
+        }),
+        [&app](const PropertyList& properties) -> ReturnValue {
+            return app.SaveMsg(properties["message"].value<std::string>().c_str());
+        });
 
     // Restore the original tools list to the end of the tools list
     tools_.insert(tools_.end(), original_tools.begin(), original_tools.end());
