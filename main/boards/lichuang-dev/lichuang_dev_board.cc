@@ -125,7 +125,9 @@ private:
             if (app.GetDeviceState() == kDeviceStateStarting && !WifiStation::GetInstance().IsConnected()) {
                 ResetWifiConfiguration();
             }
-            app.ToggleChatState();
+            // app.ToggleChatState();
+            std::string wake_word="拍个照片看看";
+            app.WakeWordInvoke(wake_word);
             // app.SaveMsg("小智nihao");
 
             // qmi8658c_data_t data;

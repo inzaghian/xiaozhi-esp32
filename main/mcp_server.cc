@@ -104,33 +104,48 @@ void McpServer::AddCommonTools() {
             });
     }
     
-    AddTool("self.feishuMsgSend",
-        "Set the feishu message.Use this tool after the user asks you to send message to houhou.",
-        PropertyList({
-            Property("message", kPropertyTypeString)
-        }),
-        [&app](const PropertyList& properties) -> ReturnValue {
-            app.FeishuMsgSend(properties["message"].value<std::string>().c_str());
-            return true;
-        });
+    // AddTool("self.feishuMsgSend",
+    //     "Set the feishu message.Use this tool after the user asks you to send message to houhou.",
+    //     PropertyList({
+    //         Property("message", kPropertyTypeString)
+    //     }),
+    //     [&app](const PropertyList& properties) -> ReturnValue {
+    //         app.FeishuMsgSend(properties["message"].value<std::string>().c_str());
+    //         return true;
+    //     });
 
-    AddTool("self.MealSearch",
-        "Search meals around.Use this tool after the user asks you to find something to eat.",
-        PropertyList({
-            Property("position", kPropertyTypeString)
-        }),
-        [&app](const PropertyList& properties) -> ReturnValue {
-            return app.MealSearch(properties["position"].value<std::string>().c_str());
-        });
-    AddTool("self.SaveMsg",
-        "Save message.Use this tool after the user asks you to save something or remember something in the xiao ben ben.",
-        PropertyList({
-            Property("message", kPropertyTypeString)
-        }),
-        [&app](const PropertyList& properties) -> ReturnValue {
-            return app.SaveMsg(properties["message"].value<std::string>().c_str());
-        });
-
+    // AddTool("self.MealSearch",
+    //     "Search meals around.Use this tool after the user asks you to find something to eat.",
+    //     PropertyList({
+    //         Property("position", kPropertyTypeString)
+    //     }),
+    //     [&app](const PropertyList& properties) -> ReturnValue {
+    //         return app.MealSearch(properties["position"].value<std::string>().c_str());
+    //     });
+    // AddTool("self.SaveMsg",
+    //     "Save message.Use this tool after the user asks you to save something or remember something in the xiao ben ben.",
+    //     PropertyList({
+    //         Property("message", kPropertyTypeString)
+    //     }),
+    //     [&app](const PropertyList& properties) -> ReturnValue {
+    //         return app.SaveMsg(properties["message"].value<std::string>().c_str());
+    //     });
+    // AddTool("self.GetMsg",
+    //     "查找小本本内容，当用户问你去小本本上看什么东西的时候使用这个工具",
+    //     PropertyList({
+    //         Property("message", kPropertyTypeString)
+    //     }),
+    //     [&app](const PropertyList& properties) -> ReturnValue {
+    //         return app.GetMsg(properties["message"].value<std::string>().c_str());
+    //     });
+    // AddTool("self.firecrawl_search",
+    //     "上网搜索，当用户问你去网上搜索什么东西的时候使用这个工具",
+    //     PropertyList({
+    //         Property("message", kPropertyTypeString)
+    //     }),
+    //     [&app](const PropertyList& properties) -> ReturnValue {
+    //         return app.firecrawl_search(properties["message"].value<std::string>().c_str());
+    //     });
     // Restore the original tools list to the end of the tools list
     tools_.insert(tools_.end(), original_tools.begin(), original_tools.end());
 }
