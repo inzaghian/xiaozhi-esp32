@@ -33,3 +33,16 @@ uint8_t I2cDevice::ReadReg(uint8_t reg) {
 void I2cDevice::ReadRegs(uint8_t reg, uint8_t* buffer, size_t length) {
     ESP_ERROR_CHECK(i2c_master_transmit_receive(i2c_device_, &reg, 1, buffer, length, 100));
 }
+
+/* add new function adept old lib like scd4x */
+void I2cDevice::Write(uint8_t* buffer, size_t length) {
+    assert(buffer != NULL);
+    assert(length != 0);
+    i2c_master_transmit(i2c_device_, buffer, length, 50 * length);
+}
+
+void I2cDevice::Read(uint8_t* buffer, size_t length) {
+    assert(buffer != NULL);
+    assert(length != 0);
+    i2c_master_receive(i2c_device_, buffer, length, 50 * length);
+}

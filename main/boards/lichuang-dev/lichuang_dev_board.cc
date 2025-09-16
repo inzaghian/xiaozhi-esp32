@@ -16,6 +16,7 @@
 #include <esp_lvgl_port.h>
 #include <lvgl.h>
 #include "qmi8658.h"
+#include "scd4x.h"
 
 
 #define TAG "LichuangDevBoard"
@@ -77,6 +78,7 @@ private:
     Pca9557* pca9557_;
     Esp32Camera* camera_;
     Qmi8658* qmi8658_;
+    Scd4x* scd4x_;
 
     void InitializeI2c() {
         // Initialize I2C peripheral
@@ -97,6 +99,7 @@ private:
         // Initialize PCA9557
         pca9557_ = new Pca9557(i2c_bus_, 0x19);
         qmi8658_ = new Qmi8658(i2c_bus_, 0x6A);
+        scd4x_ = new Scd4x(i2c_bus_, 0x62);
         qmi8658c_config_t config =
         {
             .mode = QMI8658C_MODE_DUAL,
@@ -106,6 +109,9 @@ private:
             .gyro_odr = QMI8658C_GYRO_ODR_125,
         };
         qmi8658_->setup(&config);
+
+
+
     }
 
     void InitializeSpi() {
@@ -126,45 +132,41 @@ private:
                 ResetWifiConfiguration();
             }
             // app.ToggleChatState();
-            std::string wake_word="拍个照片看看";
-            app.WakeWordInvoke(wake_word);
-            // app.SaveMsg("小智nihao");
+            // std::string wake_word="拍个照片看看";
+            // app.WakeWordInvoke(wake_word);
 
             // qmi8658c_data_t data;
             // qmi8658_->read_data(&data);
             // ESP_LOGI(TAG,"acc=%f:%f:%f",data.acc.x,data.acc.y,data.acc.z);
             // ESP_LOGI(TAG,"gyro=%f:%f:%f",data.gyro.x,data.gyro.y,data.gyro.z);
             // ESP_LOGI(TAG,"temp=%f",data.temperature);
-            // app.FeishuMsgSend("测试测试 学c++");
-            // app.MealSearch("中关村");
-            
 
-            // if (app.GetDeviceState() == kDeviceStateListening ) {
-                // std::string payload = "{\"jsonrpc\":\"2.0\",\"id\":1001,\"method\": \"tools/call\",\"params\": {\"name\": \"self.get_device_status\",\"arguments\": {}}}";
-                // std::string payload = R"({
-                // \"jsonrpc\": \"2.0\",
-                // "id": 1001,
-                // "method": "tools/call",
-                // "params": {
-                //     "name": "self.get_device_status",
-                //     "arguments": {}
-                // }
-                // })";
-
-                // 主动发送 MCP 请求
-                // uint32_t id = 1000;
-                // std::string result = "true";
-                // std::string payload = "{\"jsonrpc\":\"2.0\",\"id\":";
-                // payload += std::to_string(id) + ",\"result\":";
-                // payload += result;
-                // payload += "}";
-                // app.SendMcpMessage(payload);
-                // auto network = Board::GetInstance().GetNetwork();
-                // std::unique_ptr<HttpClient> http;
-                // http = network->CreateHttp(3);
-                // http.SetHeader()
-                // ESP_LOGI(TAG, "sending mcp:%s",payload.c_str());
-            // }
+            uint16_t s0,s1,s2=0;
+            uint16_t co2 = 0;
+            float temperature = 0.0f;
+            float humidity = 0.0f;
+            static uint8_t s_flag = 1;
+            if(s_flag) {
+                s_flag = 0;
+                // scd4x_->reinit();
+                scd4x_->wake_up();
+                scd4x_->stop_periodic_measurement();
+                scd4x_->reinit();
+                scd4x_->get_serial_number(&s0, &s1, &s2);
+                ESP_LOGI(TAG,"s0=0x%04x,s1=0x%04x,s2=0x%04x",s0,s1,s2);
+                scd4x_->start_periodic_measurement();
+            }
+            else {
+                bool is_data_ready = false;
+                scd4x_->get_data_ready_status(&is_data_ready);
+                if(is_data_ready){
+                    scd4x_->read_measurement(&co2, &temperature,&humidity);
+                    ESP_LOGI(TAG,"co2=%dPPM,temperature=%.02f`C,humidity=%.02f%%",co2,temperature,humidity);
+                }
+                else{
+                    ESP_LOGI(TAG,"data is not ready");
+                }
+            }
         });
 
 #if CONFIG_USE_DEVICE_AEC
