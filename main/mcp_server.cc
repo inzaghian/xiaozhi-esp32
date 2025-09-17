@@ -121,6 +121,8 @@ void McpServer::AddCommonTools() {
             });
     }
     
+
+#endif
     // AddTool("self.feishuMsgSend",
     //     "Set the feishu message.Use this tool after the user asks you to send message to houhou.",
     //     PropertyList({
@@ -130,8 +132,6 @@ void McpServer::AddCommonTools() {
     //         app.FeishuMsgSend(properties["message"].value<std::string>().c_str());
     //         return true;
     //     });
-#endif
-
     // AddTool("self.MealSearch",
     //     "Search meals around.Use this tool after the user asks you to find something to eat.",
     //     PropertyList({
@@ -164,6 +164,16 @@ void McpServer::AddCommonTools() {
     //     [&app](const PropertyList& properties) -> ReturnValue {
     //         return app.firecrawl_search(properties["message"].value<std::string>().c_str());
     //     });
+    auto sensor = board.GetEnvSensor();
+    if(sensor)
+        AddTool("self.SensorBroker.getSensorData",
+                "Use this tool to retrieve the current temperature, humidity, and CO2 concentration in car or room when a user inquires about the comfort level of the current car environment, car interior, or room\n"
+                "Return: A JSON object that provides the environment data: temperature, humidity, CO2.",
+            PropertyList(),
+            [sensor](const PropertyList& properties) -> ReturnValue {
+                return sensor->data_json_get();
+            });
+
     // Restore the original tools list to the end of the tools list
     tools_.insert(tools_.end(), original_tools.begin(), original_tools.end());
 }

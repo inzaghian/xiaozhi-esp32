@@ -16,6 +16,10 @@
 #include <esp_log.h>
 #include <esp_idf_lib_helpers.h>
 #include "scd4x.h"
+#include <cJSON.h>
+#include <cstring>
+#include <math.h>
+
 
 static const char *TAG = "scd4x";
 
@@ -69,7 +73,7 @@ static inline uint16_t swap(uint16_t v)
 }
 
 
-Scd4x::Scd4x(i2c_master_bus_handle_t i2c_bus, uint8_t addr) : I2cDevice(i2c_bus, addr) 
+Scd4x::Scd4x(i2c_master_bus_handle_t i2c_bus, uint8_t addr) : I2cDevice(i2c_bus, addr),Sensor()
 {
 }
 
@@ -155,19 +159,19 @@ esp_err_t Scd4x::read_measurement_ticks(uint16_t *co2, uint16_t *temperature, ui
     return ESP_OK;
 }
 
-esp_err_t Scd4x::read_measurement(uint16_t *co2, float *temperature, float *humidity)
+esp_err_t Scd4x::read_measurement(scd4x_data_t *data)//(uint16_t *co2, float *temperature, float *humidity)
 {
-    CHECK_ARG(co2 || temperature || humidity);
+    CHECK_ARG(data); //(co2 || temperature || humidity);
     uint16_t t_raw, h_raw;
 
-    CHECK(read_measurement_ticks(co2, &t_raw, &h_raw));
-    if (temperature)
-        *temperature = (float)t_raw * 175.0f / 65536.0f - 45.0f;
-    if (humidity)
-        *humidity = (float)h_raw * 100.0f / 65536.0f;
-
+    CHECK(read_measurement_ticks(&data->co2, &t_raw, &h_raw));
+    // if (temperature)
+    data->temperature = (float)t_raw * 175.0f / 65536.0f - 45.0f;
+    // if (humidity)
+    data->humidity = (float)h_raw * 100.0f / 65536.0f;
     return ESP_OK;
 }
+
 
 esp_err_t Scd4x::stop_periodic_measurement(void)
 {
@@ -318,5 +322,47 @@ esp_err_t Scd4x::wake_up(void)
 {
     return execute_cmd(CMD_WAKE_UP, 20, NULL, 0, NULL, 0);
 }
+
+std::string Scd4x::data_json_get()
+{
+    scd4x_data_t temp = {0};
+    portMUX_TYPE my_spinlock = portMUX_INITIALIZER_UNLOCKED;
+
+    taskENTER_CRITICAL(&my_spinlock);
+    memcpy(&temp, &data_, sizeof(scd4x_data_t));
+    taskEXIT_CRITICAL(&my_spinlock);
+
+    auto root = cJSON_CreateObject();
+    cJSON_AddNumberToObject(root, "CO2", temp.co2);
+    cJSON_AddNumberToObject(root, "humidity", temp.humidity);
+    cJSON_AddNumberToObject(root, "temperature",temp.temperature);
+    auto json_str = cJSON_PrintUnformatted(root);
+    std::string json(json_str);
+    cJSON_free(json_str);
+    cJSON_Delete(root);
+    return json;
+}
+
+esp_err_t Scd4x::data_update(void)
+{
+    scd4x_data_t temp = {0};
+    portMUX_TYPE my_spinlock = portMUX_INITIALIZER_UNLOCKED;
+    bool is_data_ready = false;
+
+    get_data_ready_status(&is_data_ready);
+    if(is_data_ready){
+        read_measurement(&temp);
+    }
+    else{
+        ESP_LOGW(TAG,"data is not ready");
+    }
+    taskENTER_CRITICAL(&my_spinlock);
+    memcpy(&data_, &temp, sizeof(scd4x_data_t));
+    taskEXIT_CRITICAL(&my_spinlock);
+    measure_single_shot();
+    return ESP_OK;
+}
+
+
 
 #endif

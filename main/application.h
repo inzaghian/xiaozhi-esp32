@@ -68,6 +68,7 @@ public:
     bool SaveMsg(const std::string& msg);
     
     void test(const std::string& msg);
+    void NotifyInvoke(const std::string& notify_word);
 
 private:
     Application();

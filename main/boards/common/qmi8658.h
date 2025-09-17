@@ -3,7 +3,9 @@
 
 #include <stdint.h>
 #include <esp_err.h>
+#include <string>
 #include "i2c_device.h"
+#include "sensors.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -165,7 +167,7 @@ typedef struct
 
 
 
-class Qmi8658 : public I2cDevice {
+class Qmi8658 : public I2cDevice, public Sensor{
 public:
     Qmi8658(i2c_master_bus_handle_t i2c_bus, uint8_t addr);
     // ~Qmi8658();
@@ -173,6 +175,10 @@ public:
     void reset(void);
     esp_err_t setup(qmi8658c_config_t *config);
     esp_err_t read_data(qmi8658c_data_t *data);    
+    qmi8658c_data_t data_;
+    virtual std::string data_json_get() override;
+    virtual esp_err_t data_update() override;
+    
 private:
     /* Accelerometer sensitivity table */
     uint16_t acc_scale_sensitivity_table[4] =
@@ -196,7 +202,6 @@ private:
         GYRO_SCALE_SENSITIVITY_2048DPS  // Sensitivity for ±2048 degrees per second range.
     };
     qmi8658c_config_t config;
-    // qmi8658c_data_t data;
     qmi_ctx_t qmi_ctx;
 };
 

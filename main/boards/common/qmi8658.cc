@@ -16,10 +16,12 @@
 #include <esp_log.h>
 #include <esp_idf_lib_helpers.h>
 #include "qmi8658.h"
+#include <cJSON.h>
+#include <cstring>
 
 static const char *TAG = "qmi8658c";
 
-Qmi8658::Qmi8658(i2c_master_bus_handle_t i2c_bus, uint8_t addr) : I2cDevice(i2c_bus, addr) 
+Qmi8658::Qmi8658(i2c_master_bus_handle_t i2c_bus, uint8_t addr) : I2cDevice(i2c_bus, addr), Sensor()
 {
     // WriteReg(QMI8658_RESET, 0xB0);
 }
@@ -186,5 +188,46 @@ esp_err_t Qmi8658::read_data(qmi8658c_data_t *data)
     // ESP_LOGI(TAG, "Acc: x=%f, y=%f, z=%f; Gyro: x=%f, y=%f, z=%f; Temp: %f",
     //          data->acc.x, data->acc.y, data->acc.z, data->gyro.x, data->gyro.y, data->gyro.z, data->temperature);
     // WriteReg(QMI8658_CTRL7,0x03);
+    return ESP_OK;
+}
+
+std::string Qmi8658::data_json_get()
+{
+    qmi8658c_data_t temp = {};
+    portMUX_TYPE my_spinlock = portMUX_INITIALIZER_UNLOCKED;
+
+    taskENTER_CRITICAL(&my_spinlock);
+    memcpy(&temp, &data_, sizeof(qmi8658c_data_t));
+    taskEXIT_CRITICAL(&my_spinlock);
+    
+    auto root = cJSON_CreateObject();
+    auto acc = cJSON_CreateObject();
+    cJSON_AddNumberToObject(acc, "x_axis", temp.acc.x);
+    cJSON_AddNumberToObject(acc, "y_axis", temp.acc.y);
+    cJSON_AddNumberToObject(acc, "z_axis", temp.acc.z);
+    cJSON_AddItemToObject(root, "accerate", acc);
+    auto gyro = cJSON_CreateObject();
+    cJSON_AddNumberToObject(gyro, "x_axis", temp.gyro.x);
+    cJSON_AddNumberToObject(gyro, "y_axis", temp.gyro.y);
+    cJSON_AddNumberToObject(gyro, "z_axis", temp.gyro.z);
+    cJSON_AddItemToObject(root, "gyro", gyro);
+    cJSON_AddNumberToObject(root, "temperature", temp.temperature);
+    auto json_str = cJSON_PrintUnformatted(root);
+    std::string json(json_str);
+    cJSON_free(json_str);
+    cJSON_Delete(root);
+    return json;
+}
+
+esp_err_t Qmi8658::data_update(void)
+{
+    qmi8658c_data_t temp = {};
+    portMUX_TYPE my_spinlock = portMUX_INITIALIZER_UNLOCKED;
+    read_data(&temp);
+    
+    taskENTER_CRITICAL(&my_spinlock);
+    memcpy(&data_, &temp, sizeof(qmi8658c_data_t));
+    taskEXIT_CRITICAL(&my_spinlock);
+
     return ESP_OK;
 }

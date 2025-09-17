@@ -12,6 +12,7 @@
 #include "backlight.h"
 #include "camera.h"
 #include "assets.h"
+#include "sensor_broker.h"
 
 
 void* create_board();
@@ -53,6 +54,8 @@ public:
     virtual std::string GetBoardJson() = 0;
     virtual std::string GetDeviceStatusJson() = 0;
     virtual Assets* GetAssets();
+    virtual Sensor* GetImu() { return nullptr; }
+    virtual Sensor* GetEnvSensor() { return nullptr; }
 };
 
 #define DECLARE_BOARD(BOARD_CLASS_NAME) \

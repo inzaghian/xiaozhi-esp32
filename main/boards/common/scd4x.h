@@ -3,8 +3,10 @@
 #define SCD4X_H
 
 #include <stdint.h>
+#include <string>
 #include <esp_err.h>
 #include "i2c_device.h"
+#include "sensors.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,14 +15,21 @@ extern "C" {
 #define DEFAUL_SCD4X_ADDR 0x62 //!< I2C address for QMI8658C
 #define SCD4X_I2C_FREQ_HZ 400000
 
+typedef struct
+{
+    /* data */
+    uint16_t co2;
+    float temperature;
+    float humidity;
+}scd4x_data_t;
 
 
-class Scd4x : public I2cDevice {
+class Scd4x : public I2cDevice, public Sensor {
 public:
     Scd4x(i2c_master_bus_handle_t i2c_bus, uint8_t addr);
     esp_err_t start_periodic_measurement(void);
     esp_err_t read_measurement_ticks(uint16_t *co2, uint16_t *temperature, uint16_t *humidity);
-    esp_err_t read_measurement(uint16_t *co2, float *temperature, float *humidity);
+    esp_err_t read_measurement(scd4x_data_t *data);
 
     esp_err_t stop_periodic_measurement(void);
     esp_err_t get_temperature_offset_ticks(uint16_t *t_offset);
@@ -45,6 +54,9 @@ public:
     esp_err_t measure_single_shot_rht_only(void);
     esp_err_t power_down(void);
     esp_err_t wake_up(void);
+    virtual std::string data_json_get() override;
+    virtual esp_err_t data_update() override;
+    scd4x_data_t data_;
 private:
     esp_err_t send_cmd(uint16_t cmd, uint16_t *data, size_t words);
     esp_err_t read_resp(uint16_t *data, size_t words);

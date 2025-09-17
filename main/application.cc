@@ -802,6 +802,7 @@ bool Application::UpgradeFirmware(Ota& ota, const std::string& url) {
 void Application::WakeWordInvoke(const std::string& wake_word) {
     if (device_state_ == kDeviceStateIdle) {
         ToggleChatState();
+        vTaskDelay(pdMS_TO_TICKS(10));
         Schedule([this, wake_word]() {
             if (protocol_) {
                 protocol_->SendWakeWordDetected(wake_word); 
@@ -817,6 +818,34 @@ void Application::WakeWordInvoke(const std::string& wake_word) {
                 protocol_->CloseAudioChannel();
             }
         });
+    }
+}
+
+void Application::NotifyInvoke(const std::string& notify_word) {
+    if (device_state_ == kDeviceStateIdle) {
+        ToggleChatState();
+        Schedule([this, notify_word]() {
+            if (protocol_) {
+                protocol_->SendWakeWordDetected(notify_word); 
+            }
+        }); 
+    } 
+    else if ( (device_state_ == kDeviceStateListening) || (device_state_ == kDeviceStateSpeaking)) {
+        Schedule([this, notify_word]() {
+            if (protocol_) {
+                protocol_->SendWakeWordDetected(notify_word); 
+            }
+        }); 
+    }
+    // } else if (device_state_ == kDeviceStateListening) {   
+    //     Schedule([this]() {
+    //         if (protocol_) {
+    //             protocol_->CloseAudioChannel();
+    //         }
+    //     });
+    // }
+    else {
+        ESP_LOGI(TAG,"not connected");
     }
 }
 
