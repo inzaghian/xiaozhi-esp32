@@ -537,6 +537,8 @@ void Application::Start() {
         }
     });
     bool protocol_started = protocol_->Start();
+    mqtt_private_ = std::make_unique<MqttPrivate>();
+    bool mqtt_private_started = mqtt_private_->Start();
 
     SystemInfo::PrintHeapStats();
     SetDeviceState(kDeviceStateIdle);
@@ -614,7 +616,7 @@ void Application::MainEventLoop() {
             if (clock_ticks_ % 10 == 0) {
                 // SystemInfo::PrintTaskCpuUsage(pdMS_TO_TICKS(1000));
                 // SystemInfo::PrintTaskList();
-                SystemInfo::PrintHeapStats();
+                // SystemInfo::PrintHeapStats();
             }
         }
     }

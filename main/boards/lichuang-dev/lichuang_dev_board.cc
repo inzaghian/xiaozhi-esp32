@@ -18,6 +18,7 @@
 #include "qmi8658.h"
 #include "scd4x.h"
 #include "sensor_broker.h"
+#include <esp_console.h>
 
 #define TAG "LichuangDevBoard"
 
@@ -287,6 +288,112 @@ private:
         config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
 
         camera_ = new Esp32Camera(config);
+    }    
+    void InitializeCmd() {
+        esp_console_repl_t *repl = NULL;
+        esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+        repl_config.max_cmdline_length = 1024;
+        repl_config.prompt = "xiaozhi>";
+        
+        const esp_console_cmd_t cmd1 = {
+            .command = "reboot",
+            .help = "reboot the device",
+            .hint = nullptr,
+            .func = [](int argc, char** argv) -> int {
+                esp_restart();
+                return 0;
+            },
+            .argtable = nullptr
+        };
+        ESP_ERROR_CHECK(esp_console_cmd_register(&cmd1));
+
+        const esp_console_cmd_t cmd2 = {
+            .command = "tasklist",
+            .help = "show task list",
+            .hint = nullptr,
+            .func = [](int argc, char** argv) -> int {
+                char *buf = (char *)malloc(2048);
+                printf("--------------- heap free:%ldKB ---------------------\r\n", esp_get_free_heap_size()/1024);
+                if(buf) {
+                    vTaskList(buf);
+                    printf("----------------------------------------------------\r\n");
+                    printf("task_name   status   priority   stack   num   core\r\n");
+                    printf("%s", buf);
+                    printf("----------------------------------------------------\r\n");
+                    free(buf);
+                }
+                else {
+                    printf("no memory\r\n");
+                }
+
+                return 0;
+            },
+            .argtable = nullptr
+        };
+        ESP_ERROR_CHECK(esp_console_cmd_register(&cmd2));
+
+        const esp_console_cmd_t cmd3 = {
+            .command = "cpu",
+            .help = "show cpu usage",
+            .hint = nullptr,
+            .func = [](int argc, char** argv) -> int {
+                char *buf = (char *)malloc(2048);
+                printf("--------------- heap free:%ldKB ---------------------\r\n", esp_get_free_heap_size()/1024);
+                if(buf) {
+                    vTaskGetRunTimeStats(buf);
+                    printf("task_name      run_cnt                 usage_rate   \r\n");
+                    printf("%s", buf);
+                    printf("----------------------------------------------------\r\n");
+                    free(buf);
+                }
+                else {
+                    printf("no memory\r\n");
+                }
+                return 0;
+            },
+            .argtable = nullptr
+        };
+        ESP_ERROR_CHECK(esp_console_cmd_register(&cmd3));
+
+
+        // const esp_console_cmd_t cmd4 = {
+        //     .command = "factory_reset",
+        //     .help = "factory reset and reboot the device",
+        //     .hint = NULL,
+        //     .func = NULL,
+        //     .argtable = NULL,
+        //     .func_w_context = [](void *context,int argc, char** argv) -> int {
+        //         nvs_flash_erase();
+        //         esp_restart();
+        //         return 0;
+        //     },
+        //     .context =this
+        // };
+        // ESP_ERROR_CHECK(esp_console_cmd_register(&cmd4));
+
+        // const esp_console_cmd_t cmd5 = {
+        //     .command = "read_mac",
+        //     .help = "Read mac address",
+        //     .hint = NULL,
+        //     .func = NULL,
+        //     .argtable = NULL,
+        //     .func_w_context = [](void *context,int argc, char** argv) -> int {
+        //         uint8_t mac[6];
+        //         esp_read_mac(mac, ESP_MAC_WIFI_STA);
+        //         printf("wifi_sta_mac: " MACSTR "\n", MAC2STR(mac));
+        //         esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP);
+        //         printf("wifi_softap_mac: " MACSTR "\n", MAC2STR(mac));
+        //         esp_read_mac(mac, ESP_MAC_BT);
+        //         printf("bt_mac: " MACSTR "\n", MAC2STR(mac));
+        //         return 0;
+        //     },
+        //     .context =this
+        // };
+        // ESP_ERROR_CHECK(esp_console_cmd_register(&cmd5));
+
+        esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
+        ESP_ERROR_CHECK(esp_console_new_repl_uart(&hw_config, &repl_config, &repl));
+        ESP_ERROR_CHECK(esp_console_start_repl(repl));
     }
 
 public:
@@ -297,7 +404,7 @@ public:
         InitializeTouch();
         InitializeButtons();
         InitializeCamera();
-
+        InitializeCmd();
         GetBacklight()->RestoreBrightness();
     }
 
