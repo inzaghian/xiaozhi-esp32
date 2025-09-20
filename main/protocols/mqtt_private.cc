@@ -8,8 +8,15 @@
 #include <arpa/inet.h>
 #include "assets/lang_config.h"
 #include <esp_console.h>
-
+#include "argtable3/argtable3.h"
 #define TAG "MQTT_PRIVATE"
+
+typedef struct {
+    struct arg_str *str;
+    struct arg_end *end;
+} publish_args_t;
+
+static publish_args_t publish_args;
 
 MqttPrivate::MqttPrivate() {
     // Initialize reconnect timer
@@ -27,14 +34,23 @@ MqttPrivate::MqttPrivate() {
         .arg = this,
     };
     esp_timer_create(&reconnect_timer_args, &reconnect_timer_);
+
+    publish_args.str = arg_str0(NULL, NULL, "<string>", "a string value");  // 可选字符串参数
+    publish_args.end = arg_end(2);                                          // 参数列表结束, 最多允许有 2 个额外的未解
     const esp_console_cmd_t cmd1 = {
         .command = "publish",
         .help = "publish message",
         .hint = nullptr,
+        .argtable = &publish_args,
         .func_w_context = [](void *context,int argc, char** argv) -> int {
+            int nerrors = arg_parse(argc, argv, (void **) &publish_args);
+            if (nerrors != 0) {
+                arg_print_errors(stderr, publish_args.end, argv[0]);
+                return 1;
+            }
             MqttPrivate *pctx = (MqttPrivate *)context;
             if(pctx->mqtt_) {
-                pctx->mqtt_->Publish(pctx->publish_topic_, std::string("hhh"));
+                pctx->mqtt_->Publish(pctx->publish_topic_, std::string(publish_args.str->sval[0]));
             }
             return 0;
         },
