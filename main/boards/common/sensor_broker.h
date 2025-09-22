@@ -11,6 +11,8 @@
 extern "C" {
 #endif
 
+#define CO2_THRESHOLD_IN_PPM    1500U
+
 enum EnvState{
     ENV_GOOD = 0,
     ENV_BAD

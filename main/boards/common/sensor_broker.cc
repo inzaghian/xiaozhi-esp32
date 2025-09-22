@@ -50,25 +50,25 @@ void SensorBroker::SensorBrokerTask()
         if(cnt % 100 == 0) {
             scd4x_->data_update();
             ESP_LOGI(TAG,"%s",scd4x_->data_json_get().c_str());
-            if(scd4x_->data_.co2 > 700) {
+            if(scd4x_->data_.co2 > CO2_THRESHOLD_IN_PPM) {
+                co2_cnt_bad++;
                 if (state == ENV_GOOD && co2_cnt_bad >= 3) {
                     state = ENV_BAD;
                     co2_cnt_bad = 0;
                     app.WakeWordInvoke(std::string ("这是一条警告，二氧化碳浓度过高, 请先播报在回答"));
                 }
                 else {
-                    co2_cnt_bad++;
                     co2_cnt_good = 0;
                 }
             }
             else {
+                co2_cnt_good++;
                 if (state == ENV_BAD && co2_cnt_good >= 3) {
                     state = ENV_GOOD;
                     co2_cnt_good = 0;
                     app.WakeWordInvoke(std::string ("这是一条通知，二氧化碳浓度已经恢复正常, 请先播报在回答"));
                 }
                 else {
-                    co2_cnt_good++;
                     co2_cnt_bad = 0;
                 }
             }

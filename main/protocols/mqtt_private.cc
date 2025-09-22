@@ -79,7 +79,7 @@ bool MqttPrivate::Start() {
     auto username = std::string("xiaozhi");
     auto password = std::string("123456");
     int keepalive_interval = 240;
-    publish_topic_ = std::string("test/mqtt_topic");
+    publish_topic_ = std::string(MQTT_UP_STREAM_TOPIC);
 
     auto network = Board::GetInstance().GetNetwork();
     mqtt_ = network->CreateMqtt(0);
@@ -92,7 +92,7 @@ bool MqttPrivate::Start() {
 
     mqtt_->OnConnected([this]() {
         esp_timer_stop(reconnect_timer_);
-        mqtt_->Subscribe(publish_topic_);
+        mqtt_->Subscribe(std::string(MQTT_DOWN_STREAM_TOPIC));
         ESP_LOGI(TAG,"mqtt 2 connected");
     });
 

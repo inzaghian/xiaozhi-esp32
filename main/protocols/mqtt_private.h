@@ -14,6 +14,8 @@
 #include <chrono>
 
 #define MQTT_RECONNECT_INTERVAL_MS 60000
+#define MQTT_UP_STREAM_TOPIC    "feishu/upstream"
+#define MQTT_DOWN_STREAM_TOPIC    "feishu/downstream"
 
 
 class MqttPrivate {
