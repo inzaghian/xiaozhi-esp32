@@ -24,6 +24,9 @@ public:
     ~MqttPrivate();
 
     bool Start() ;
+    void publish(std::string data);
+    bool is_remote_wakeup;
+    std::string chat_id_str;
 private:
     std::string publish_topic_;
     std::unique_ptr<Mqtt> mqtt_;

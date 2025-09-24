@@ -9,6 +9,8 @@
 #include "assets/lang_config.h"
 #include <esp_console.h>
 #include "argtable3/argtable3.h"
+#include <cJSON.h>
+
 #define TAG "MQTT_PRIVATE"
 
 typedef struct {
@@ -57,6 +59,7 @@ MqttPrivate::MqttPrivate() {
         .context = this
     };
     ESP_ERROR_CHECK(esp_console_cmd_register(&cmd1));
+    is_remote_wakeup = false;
 }
 
 MqttPrivate::~MqttPrivate() {
@@ -98,6 +101,38 @@ bool MqttPrivate::Start() {
 
     mqtt_->OnMessage([this](const std::string& topic, const std::string& payload) {
         ESP_LOGI(TAG,"%s:%s",topic.c_str(), payload.c_str());
+        cJSON* root = cJSON_Parse(payload.c_str());
+        if(root == nullptr) {
+            ESP_LOGE(TAG, "Failed to parse JSON payload: %s", payload.c_str());
+            return;
+        }
+        cJSON* chat_id = cJSON_GetObjectItem(root, "chat_id");
+        if(chat_id == nullptr) {
+            cJSON_Delete(root);
+            ESP_LOGE(TAG, "Failed to parse JSON payload 1: %s", payload.c_str());
+            return;
+        }
+        if(chat_id->type != cJSON_String) {
+            cJSON_Delete(root);
+            ESP_LOGE(TAG, "Failed to parse JSON payload 2: %s", payload.c_str());
+            return;
+        }
+        chat_id_str = chat_id->valuestring;
+        cJSON* pl = cJSON_GetObjectItem(root, "payload");
+        if(pl == nullptr) {
+            cJSON_Delete(root);
+            ESP_LOGE(TAG, "Failed to parse JSON payload 3: %s", payload.c_str());
+            return;
+        }
+        if(pl->type != cJSON_String) {
+            cJSON_Delete(root);
+            ESP_LOGE(TAG, "Failed to parse JSON payload 4: %s", payload.c_str());
+            return;
+        }
+        std::string payload_str = pl->valuestring;
+        is_remote_wakeup = true;
+        Application::GetInstance().WakeWordInvoke(payload_str);
+        cJSON_Delete(root);
     });
 
     ESP_LOGI(TAG, "Connecting to endpoint %s", endpoint.c_str());
@@ -117,5 +152,10 @@ bool MqttPrivate::Start() {
 
     ESP_LOGI(TAG, "Connected to endpoint 2");
     return true;
+}
+
+void MqttPrivate::publish(std::string data)
+{
+    mqtt_->Publish(MQTT_UP_STREAM_TOPIC, data);
 }
 

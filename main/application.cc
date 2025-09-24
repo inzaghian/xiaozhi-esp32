@@ -465,8 +465,15 @@ void Application::Start() {
                         if (listening_mode_ == kListeningModeManualStop) {
                             SetDeviceState(kDeviceStateIdle);
                         } else {
-                            SetDeviceState(kDeviceStateListening);
+                            if(this->mqtt_private_->is_remote_wakeup) {
+                                this->mqtt_private_->is_remote_wakeup = false;
+                                SetDeviceState(kDeviceStateIdle);
+                            }
+                            else {
+                                SetDeviceState(kDeviceStateListening);
+                            }
                         }
+                        
                     }
                 });
             } else if (strcmp(state->valuestring, "sentence_start") == 0) {
@@ -475,6 +482,21 @@ void Application::Start() {
                     ESP_LOGI(TAG, "<< %s", text->valuestring);
                     Schedule([this, display, message = std::string(text->valuestring)]() {
                         display->SetChatMessage("assistant", message.c_str());
+                        if(this->mqtt_private_->is_remote_wakeup) {
+                            std::string msg = message;
+                            std::replace(msg.begin(), msg.end(), '\"', '\'');
+                            std::replace(msg.begin(), msg.end(), '\n', ' ');
+                            
+                            std::string json = R"(
+                                {
+                                    "type": "message",
+                                    "chat_id":")" + this->mqtt_private_->chat_id_str + R"(",
+                                    "payload":")" + msg + R"("
+                                }
+                            )";
+                            this->mqtt_private_->publish(json);
+                            // this->AbortSpeaking(kAbortReasonNone);
+                        }
                     });
                 }
             }
