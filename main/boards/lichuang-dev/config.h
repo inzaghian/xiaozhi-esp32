@@ -58,5 +58,8 @@
 
 #define XCLK_FREQ_HZ 24000000
 
+#define UART_TX_PIN GPIO_NUM_10
+#define UART_RX_PIN GPIO_NUM_11
+
 
 #endif // _BOARD_CONFIG_H_

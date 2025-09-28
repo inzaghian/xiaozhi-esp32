@@ -19,6 +19,7 @@
 #include "scd4x.h"
 #include "sensor_broker.h"
 #include <esp_console.h>
+#include "uart_device.h"
 
 #define TAG "LichuangDevBoard"
 
@@ -78,6 +79,7 @@ private:
     Qmi8658* qmi8658_;
     Scd4x* scd4x_;
     SensorBroker* sb_;
+    UartDevice* uart_;
 
     void InitializeI2c() {
         // Initialize I2C peripheral
@@ -139,41 +141,6 @@ private:
                 ResetWifiConfiguration();
             }
             app.ToggleChatState();
-            // std::string wake_word="拍个照片看看";
-            // app.WakeWordInvoke(wake_word);
-
-            // qmi8658c_data_t data;
-            // qmi8658_->read_data(&data);
-            // ESP_LOGI(TAG,"acc=%f:%f:%f",data.acc.x,data.acc.y,data.acc.z);
-            // ESP_LOGI(TAG,"gyro=%f:%f:%f",data.gyro.x,data.gyro.y,data.gyro.z);
-            // ESP_LOGI(TAG,"temp=%f",data.temperature);
-
-            // uint16_t s0,s1,s2=0;
-            // uint16_t co2 = 0;
-            // float temperature = 0.0f;
-            // float humidity = 0.0f;
-            // static uint8_t s_flag = 1;
-            // if(s_flag) {
-            //     s_flag = 0;
-            //     // scd4x_->reinit();
-            //     scd4x_->wake_up();
-            //     scd4x_->stop_periodic_measurement();
-            //     scd4x_->reinit();
-            //     scd4x_->get_serial_number(&s0, &s1, &s2);
-            //     ESP_LOGI(TAG,"s0=0x%04x,s1=0x%04x,s2=0x%04x",s0,s1,s2);
-            //     scd4x_->start_periodic_measurement();
-            // }
-            // else {
-            //     bool is_data_ready = false;
-            //     scd4x_->get_data_ready_status(&is_data_ready);
-            //     if(is_data_ready){
-            //         scd4x_->read_measurement(&co2, &temperature,&humidity);
-            //         ESP_LOGI(TAG,"co2=%dPPM,temperature=%.02f`C,humidity=%.02f%%",co2,temperature,humidity);
-            //     }
-            //     else{
-            //         ESP_LOGI(TAG,"data is not ready");
-            //     }
-            // }
         });
 
 #if CONFIG_USE_DEVICE_AEC
@@ -289,6 +256,10 @@ private:
 
         camera_ = new Esp32Camera(config);
     }    
+    void InitializeUart() {
+        uart_ = new UartDevice(UART_TX_PIN, UART_RX_PIN);
+        uart_->Initialize();
+    };
     void InitializeCmd() {
         esp_console_repl_t *repl = NULL;
         esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
@@ -405,6 +376,7 @@ public:
         InitializeButtons();
         InitializeCamera();
         InitializeCmd();
+        InitializeUart();
         GetBacklight()->RestoreBrightness();
     }
 
