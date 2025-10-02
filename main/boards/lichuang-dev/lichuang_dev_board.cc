@@ -21,7 +21,13 @@
 #include <esp_console.h>
 #include "uart_device.h"
 
+#include "esp_vfs_fat.h"
+#include "sdmmc_cmd.h"
+#include "driver/sdmmc_host.h"
+
 #define TAG "LichuangDevBoard"
+
+#define MOUNT_POINT              "/sdcard"
 
 class Pca9557 : public I2cDevice {
 public:
@@ -259,7 +265,64 @@ private:
     void InitializeUart() {
         uart_ = new UartDevice(UART_TX_PIN, UART_RX_PIN);
         uart_->Initialize();
-    };
+    }
+
+    void InitializeSdcard() {
+        esp_err_t ret;
+        esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+            .format_if_mount_failed = true,   // 如果挂载不成功是否需要格式化SD卡
+            .max_files = 5, // 允许打开的最大文件数
+            .allocation_unit_size = 16 * 1024  // 分配单元大小
+        };
+        
+        sdmmc_card_t *card;
+        const char mount_point[] = MOUNT_POINT;
+        ESP_LOGI(TAG, "Initializing SD card");
+        ESP_LOGI(TAG, "Using SDMMC peripheral");
+  
+        sdmmc_host_t host = SDMMC_HOST_DEFAULT(); // SDMMC主机接口配置
+        sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT(); // SDMMC插槽配置
+        slot_config.width = 1;  // 设置为1线SD模式
+        slot_config.clk = SD_CLK_PIN; 
+        slot_config.cmd = SD_CMD_PIN;
+        slot_config.d0 = SD_D0_PIN;
+        slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP; // 打开内部上拉电阻
+
+        ESP_LOGI(TAG, "Mounting filesystem");
+        ret = esp_vfs_fat_sdmmc_mount(mount_point, &host, &slot_config, &mount_config, &card); // 挂载SD卡
+
+        if (ret != ESP_OK) {  // 如果没有挂载成功
+            if (ret == ESP_FAIL) { // 如果挂载失败
+                ESP_LOGE(TAG, "Failed to mount filesystem. ");
+            } else { // 如果是其它错误 打印错误名称
+                ESP_LOGE(TAG, "Failed to initialize the card (%s). ", esp_err_to_name(ret));
+            }
+            return;
+        }
+        ESP_LOGI(TAG, "Filesystem mounted"); // 提示挂载成功
+        sdmmc_card_print_info(stdout, card); // 终端打印SD卡的一些信息
+        // /*test file system*/
+        // // 测试创建文件
+        // FILE *f = fopen("/sdcard/test.txt", "w");
+        // if (f == NULL) {
+        //     ESP_LOGE(TAG, "Failed to create file");
+        //     return;
+        // }
+        // fprintf(f, "Hello, World!");
+        // fclose(f);
+        // ESP_LOGI(TAG, "File created successfully");
+        
+        // // 测试读取文件
+        // f = fopen("/sdcard/test.txt", "r");
+        // if (f == NULL) {
+        //     ESP_LOGE(TAG, "Failed to open file for reading");
+        //     return;
+        // }
+        // char buffer[100];
+        // fgets(buffer, sizeof(buffer), f);
+        // fclose(f);
+        // ESP_LOGI(TAG, "File content: %s", buffer);
+    }
     void InitializeCmd() {
         esp_console_repl_t *repl = NULL;
         esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
@@ -326,42 +389,6 @@ private:
         };
         ESP_ERROR_CHECK(esp_console_cmd_register(&cmd3));
 
-
-        // const esp_console_cmd_t cmd4 = {
-        //     .command = "factory_reset",
-        //     .help = "factory reset and reboot the device",
-        //     .hint = NULL,
-        //     .func = NULL,
-        //     .argtable = NULL,
-        //     .func_w_context = [](void *context,int argc, char** argv) -> int {
-        //         nvs_flash_erase();
-        //         esp_restart();
-        //         return 0;
-        //     },
-        //     .context =this
-        // };
-        // ESP_ERROR_CHECK(esp_console_cmd_register(&cmd4));
-
-        // const esp_console_cmd_t cmd5 = {
-        //     .command = "read_mac",
-        //     .help = "Read mac address",
-        //     .hint = NULL,
-        //     .func = NULL,
-        //     .argtable = NULL,
-        //     .func_w_context = [](void *context,int argc, char** argv) -> int {
-        //         uint8_t mac[6];
-        //         esp_read_mac(mac, ESP_MAC_WIFI_STA);
-        //         printf("wifi_sta_mac: " MACSTR "\n", MAC2STR(mac));
-        //         esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP);
-        //         printf("wifi_softap_mac: " MACSTR "\n", MAC2STR(mac));
-        //         esp_read_mac(mac, ESP_MAC_BT);
-        //         printf("bt_mac: " MACSTR "\n", MAC2STR(mac));
-        //         return 0;
-        //     },
-        //     .context =this
-        // };
-        // ESP_ERROR_CHECK(esp_console_cmd_register(&cmd5));
-
         esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
         ESP_ERROR_CHECK(esp_console_new_repl_uart(&hw_config, &repl_config, &repl));
         ESP_ERROR_CHECK(esp_console_start_repl(repl));
@@ -377,6 +404,7 @@ public:
         InitializeCamera();
         InitializeCmd();
         InitializeUart();
+        InitializeSdcard();
         GetBacklight()->RestoreBrightness();
     }
 

@@ -61,5 +61,9 @@
 #define UART_TX_PIN GPIO_NUM_10
 #define UART_RX_PIN GPIO_NUM_11
 
+#define SD_CLK_PIN          GPIO_NUM_47
+#define SD_CMD_PIN          GPIO_NUM_48
+#define SD_D0_PIN           GPIO_NUM_21
+
 
 #endif // _BOARD_CONFIG_H_
