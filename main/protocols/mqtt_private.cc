@@ -77,7 +77,7 @@ bool MqttPrivate::Start() {
         mqtt_.reset();
     }
 
-    auto endpoint = std::string("101.43.187.112:1883");
+    auto endpoint = std::string("81.70.149.89:1883");
     auto client_id = std::string("esp32s3");
     auto username = std::string("xiaozhi");
     auto password = std::string("123456");
