@@ -263,7 +263,7 @@ private:
         camera_ = new Esp32Camera(config);
     }    
     void InitializeUart() {
-        uart_ = new UartDevice(UART_TX_PIN, UART_RX_PIN);
+        uart_ = new UartDevice(UART_TX_PIN, UART_RX_PIN, UART_DTR_PIN, 9600);
         uart_->Initialize();
     }
 

@@ -9,9 +9,9 @@
 #define TAG "UartDevice"
 
 // UartDevice 构造函数实现
-UartDevice::UartDevice(gpio_num_t tx_pin, gpio_num_t rx_pin, gpio_num_t dtr_pin)
+UartDevice::UartDevice(gpio_num_t tx_pin, gpio_num_t rx_pin, gpio_num_t dtr_pin, int baud_rate)
     : tx_pin_(tx_pin), rx_pin_(rx_pin), dtr_pin_(dtr_pin), uart_num_(UART_NUM),
-      baud_rate_(9600), initialized_(false),
+      baud_rate_(baud_rate), initialized_(false),
       event_task_handle_(nullptr), event_queue_handle_(nullptr), event_group_handle_(nullptr) {
 }
 

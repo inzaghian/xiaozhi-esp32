@@ -30,7 +30,7 @@
 class UartDevice {
 public:
     // 构造函数
-    UartDevice(gpio_num_t tx_pin, gpio_num_t rx_pin, gpio_num_t dtr_pin = GPIO_NUM_NC);
+    UartDevice(gpio_num_t tx_pin, gpio_num_t rx_pin, gpio_num_t dtr_pin = GPIO_NUM_NC, int baud_rate = 115200);
     ~UartDevice();
 
     // 初始化和配置

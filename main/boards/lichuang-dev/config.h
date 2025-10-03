@@ -60,6 +60,7 @@
 
 #define UART_TX_PIN GPIO_NUM_10
 #define UART_RX_PIN GPIO_NUM_11
+#define UART_DTR_PIN GPIO_NUM_NC
 
 #define SD_CLK_PIN          GPIO_NUM_47
 #define SD_CMD_PIN          GPIO_NUM_48
