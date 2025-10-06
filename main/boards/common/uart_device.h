@@ -46,27 +46,15 @@ private:
     uart_port_t uart_num_;
     int baud_rate_;
     bool initialized_;
-    // int cme_error_code_ = 0;
-    // std::string response_;
-    // bool wait_for_response_ = false;
-    // std::mutex command_mutex_;
-    // std::mutex mutex_;
     
     // FreeRTOS 对象
     TaskHandle_t event_task_handle_ = nullptr;
-    TaskHandle_t receive_task_handle_ = nullptr;
     QueueHandle_t event_queue_handle_;
-    EventGroupHandle_t event_group_handle_;
-    
+
     std::string rx_buffer_;
-    
-    // 回调函数
-    // std::list<UrcCallback> urc_callbacks_;
     
     // 内部方法
     void EventTask();
-    void ReceiveTask();
-
+    bool ParseResponse();
 };
-
 #endif // UART_DEVICE_H
