@@ -28,6 +28,7 @@ public:
     void Blink(StripColor color, int interval_ms);
     void Breathe(StripColor low, StripColor high, int interval_ms);
     void Scroll(StripColor low, StripColor high, int length, int interval_ms);
+    void ShowImage(const StripColor *image);
 
 private:
     std::mutex mutex_;

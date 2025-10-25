@@ -231,3 +231,15 @@ void CircularStrip::OnStateChanged() {
             return;
     }
 }
+void CircularStrip::ShowImage(const StripColor *image) {
+    for (size_t i = 0; i < max_leds_; i++)
+    {
+        /* code */
+        colors_[i].red = image[i].red;
+        colors_[i].green = image[i].green;
+        colors_[i].blue = image[i].blue;
+        led_strip_set_pixel(led_strip_, i, colors_[i].red, colors_[i].green, colors_[i].blue);
+    }
+    
+    led_strip_refresh(led_strip_);
+}

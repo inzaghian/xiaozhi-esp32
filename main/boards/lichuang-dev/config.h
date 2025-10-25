@@ -66,5 +66,9 @@
 #define SD_CMD_PIN          GPIO_NUM_48
 #define SD_D0_PIN           GPIO_NUM_21
 
+#define STRIP_LED_PIN       GPIO_NUM_10
+#define STRIP_LED_NUM       64
+#define STRIP_LED_TYPE      WS2812B
+
 
 #endif // _BOARD_CONFIG_H_
