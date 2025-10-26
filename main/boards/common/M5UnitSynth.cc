@@ -115,8 +115,10 @@ M5UnitSynth::M5UnitSynth(gpio_num_t tx_pin): UartDevice(tx_pin, GPIO_NUM_NC, GPI
 void M5UnitSynth::play(char data) {
     if(data == 0x0d)
         setNoteOff(0, data, 127);
-    else
-        setNoteOn(0, data, 63);
+    else {
+        // setNoteOff(0, data, 0);
+        setNoteOn(0, data, 127);
+    }
 }
 
 void M5UnitSynth::MidiTask(void) {
@@ -152,7 +154,7 @@ void M5UnitSynth::MidiTask(void) {
         // Wait for the specief duration before playing the next note.
         vTaskDelay(pdMS_TO_TICKS(noteDuration));
         // stop the waveform generation before the next note.
-        // setNoteOff(0, melody[thisNote], 127);
+        setNoteOff(0, melody[thisNote], 127);
     }
 }
 
