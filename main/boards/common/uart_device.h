@@ -30,12 +30,12 @@
 class UartDevice {
 public:
     // 构造函数
-    UartDevice(gpio_num_t tx_pin, gpio_num_t rx_pin, gpio_num_t dtr_pin = GPIO_NUM_NC, int baud_rate = 115200);
+    UartDevice(gpio_num_t tx_pin, gpio_num_t rx_pin, gpio_num_t dtr_pin = GPIO_NUM_NC, int baud_rate = 115200, uart_port_t uart_num = UART_NUM);
     ~UartDevice();
 
     // 初始化和配置
     void Initialize();
-    
+    void reg_receive_func(void(*func)(void *,uint8_t *,size_t), void *arg);
     // 数据发送
     bool SendData(const char* data, size_t length);
 private:
@@ -52,9 +52,10 @@ private:
     QueueHandle_t event_queue_handle_;
 
     std::string rx_buffer_;
+    void(*on_receive)(void *, uint8_t *, size_t);
+    void *arg_;
     
     // 内部方法
     void EventTask();
-    bool ParseResponse();
 };
 #endif // UART_DEVICE_H

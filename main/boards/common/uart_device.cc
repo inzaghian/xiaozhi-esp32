@@ -9,8 +9,8 @@
 #define TAG "UartDevice"
 
 // UartDevice 构造函数实现
-UartDevice::UartDevice(gpio_num_t tx_pin, gpio_num_t rx_pin, gpio_num_t dtr_pin, int baud_rate)
-    : tx_pin_(tx_pin), rx_pin_(rx_pin), dtr_pin_(dtr_pin), uart_num_(UART_NUM),
+UartDevice::UartDevice(gpio_num_t tx_pin, gpio_num_t rx_pin, gpio_num_t dtr_pin, int baud_rate, uart_port_t uart_num)
+    : tx_pin_(tx_pin), rx_pin_(rx_pin), dtr_pin_(dtr_pin), uart_num_(uart_num),
       baud_rate_(baud_rate), initialized_(false),
       event_task_handle_(nullptr), event_queue_handle_(nullptr) {
 }
@@ -24,6 +24,8 @@ UartDevice::~UartDevice() {
         uart_driver_delete(uart_num_);
     }
 }
+
+
 
 void UartDevice::Initialize() {
     if (initialized_) {
@@ -60,9 +62,17 @@ void UartDevice::Initialize() {
 
     initialized_ = true;
 }
+static portMUX_TYPE s_mutex = portMUX_INITIALIZER_UNLOCKED;
+void UartDevice::reg_receive_func(void(*func)(void *,uint8_t *,size_t), void *arg){
+    taskENTER_CRITICAL(&s_mutex);
+    on_receive = func;
+    arg_ = arg;
+    taskEXIT_CRITICAL(&s_mutex);
+}
 
 void UartDevice::EventTask() {
     uart_event_t event;
+    uint8_t *pBuffer = NULL;
     while (true) {
         if (xQueueReceive(event_queue_handle_, &event, portMAX_DELAY) == pdTRUE) {
             switch (event.type)
@@ -71,12 +81,19 @@ void UartDevice::EventTask() {
                 size_t available;
                 uart_get_buffered_data_len(uart_num_, &available);
                 if (available > 0) {
-                    // Extend rx_buffer_ and read into buffer
-                    rx_buffer_.resize(rx_buffer_.size() + available);
-                    char* rx_buffer_ptr = &rx_buffer_[rx_buffer_.size() - available];
-                    uart_read_bytes(uart_num_, rx_buffer_ptr, available, portMAX_DELAY);
-                    // while (ParseResponse()) {}
-                    ESP_LOGI(TAG, "Received %d bytes: %s", available, rx_buffer_ptr);
+                    pBuffer = (uint8_t *)malloc(available+1);
+                    if(pBuffer == NULL){
+                        ESP_LOGE(TAG, "Failed to allocate memory for received data");
+                        continue;
+                    }
+                    memset(pBuffer, 0, available+1);
+                    uart_read_bytes(uart_num_, pBuffer, available, portMAX_DELAY);
+                    if(on_receive)
+                    {
+                        on_receive(arg_, pBuffer, available);
+                    }
+                    ESP_LOGI(TAG, "Received %d bytes: %s", available, pBuffer);
+                    free(pBuffer);
                 }
                 break;
             case UART_BREAK:
@@ -108,123 +125,4 @@ bool UartDevice::SendData(const char* data, size_t length) {
         return false;
     }
     return true;
-}
-
-bool UartDevice::ParseResponse() {
-
-    auto end_pos = rx_buffer_.find("\r\n");
-    if (end_pos == std::string::npos) {
-        // FIXME: for +MHTTPURC: "ind", missing newline
-            return false;
-    }
-    // Ignore empty lines
-    if (end_pos == 0) {
-        rx_buffer_.erase(0, 2);
-        return true;
-    }
-
-    ESP_LOGI(TAG, "<< %.64s (%u bytes)", rx_buffer_.substr(0, end_pos).c_str(), end_pos);
-    //从第一行开始解析NMEA协议
-    std::string line = rx_buffer_.substr(0, end_pos);
-    if (line.find("$GPGGA") != std::string::npos) {
-        // 解析GPGGA数据
-        std::stringstream ss(line.c_str());
-        std::string token;
-        // TODO: 实现GPGGA数据解析逻辑
-        // 例如：解析时间、纬度、经度、高度等信息
-        // 解析GPGGA数据
-        if (std::getline(ss, token, ',')) { // 读取时间
-            // TODO: 处理时间信息
-            std::string time_str = token.substr(0, 2) + ":" + token.substr(2, 2) + ":" + token.substr(4, 2);
-            ESP_LOGI(TAG, "time: %s", time_str.c_str());
-        }
-        if (std::getline(ss, token, ',')) { // 读取纬度
-            // TODO: 处理纬度信息
-            std::string lat_str = token.substr(0, 2) + "." + token.substr(2, 2) + "." + token.substr(4, 2);
-            ESP_LOGI(TAG, "lat: %s", lat_str.c_str());
-        }
-        if (std::getline(ss, token, ',')) { // 读取纬度方向
-            // TODO: 处理纬度方向信息
-            std::string lat_dir = token;
-            ESP_LOGI(TAG, "lat dir: %s", lat_dir.c_str());
-        }
-        if (std::getline(ss, token, ',')) { // 读取经度
-            // TODO: 处理经度信息
-            std::string lon_str = token.substr(0, 3) + "." + token.substr(3, 2) + "." + token.substr(5, 2);
-
-            ESP_LOGI(TAG, "lon: %s", lon_str.c_str());
-        }
-        if (std::getline(ss, token, ',')) { // 读取经度方向
-            // TODO: 处理经度方向信息
-            std::string lon_dir = token;
-            ESP_LOGI(TAG, "lon dir: %s", lon_dir.c_str());
-        }
-        if (std::getline(ss, token, ',')) { // 读取高度
-            // TODO: 处理高度信息
-            std::string height_str = token.substr(0, 2) + "." + token.substr(2, 2);
-            ESP_LOGI(TAG, "height: %s", height_str.c_str());
-        }
-        if (std::getline(ss, token, ',')) { // 读取高度单位
-            // TODO: 处理高度单位信息
-            std::string height_unit = token;
-            ESP_LOGI(TAG, "height unit: %s", height_unit.c_str());
-        }
-        return true;
-    }
-    else if (line.find("$GPRMC") != std::string::npos)
-
-    {
-        // 解析GPRMC数据
-        std::stringstream ss(line.c_str());
-        std::string token;
-        // TODO: 实现GPRMC数据解析逻辑
-        if (std::getline(ss, token, ',')) { // 读取时间
-            // TODO: 处理时间信息
-            std::string time_str = token.substr(0, 2) + ":" + token.substr(2, 2) + ":" + token.substr(4, 2);
-            ESP_LOGI(TAG, "time: %s", time_str.c_str());
-        }
-        if (std::getline(ss, token, ',')) { // 读取状态
-            // TODO: 处理状态信息
-            std::string status = token;
-            ESP_LOGI(TAG, "status: %s", status.c_str());
-        }
-        if (std::getline(ss, token, ',')) { // 读取纬度
-            // TODO: 处理纬度信息
-            std::string lat_str = token.substr(0, 2) + "." + token.substr(2, 2) + "." + token.substr(4, 2);
-            ESP_LOGI(TAG, "lat: %s", lat_str.c_str());
-
-        }
-        if (std::getline(ss, token, ',')) { // 读取纬度方向
-
-            // TODO: 处理纬度方向信息
-
-            std::string lat_dir = token;
-
-            ESP_LOGI(TAG, "lat dir: %s", lat_dir.c_str());
-        }
-        
-        if (std::getline(ss, token, ',')) { // 读取经度
-            // TODO: 处理经度信息
-            std::string lon_str = token.substr(0, 3) + "." + token.substr(3, 2) + "." + token.substr(5, 2);
-            ESP_LOGI(TAG, "lon: %s", lon_str.c_str());
-        }
-        
-        if (std::getline(ss, token, ',')) { // 读取速度
-            // TODO: 处理速度信息
-            std::string speed_str = token;
-            ESP_LOGI(TAG, "speed: %s", speed_str.c_str());
-        }
-        
-        if (std::getline(ss, token, ',')) { // 读取航向
-            // TODO: 处理航向信息
-            std::string heading_str = token;
-            ESP_LOGI(TAG, "heading: %s", heading_str.c_str());
-        }
-
-        return true;
-    }
-    
-    rx_buffer_.erase(0, end_pos + 2);
-    return false;
-    
 }

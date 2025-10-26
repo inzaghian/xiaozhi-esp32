@@ -25,6 +25,7 @@
 #include "sdmmc_cmd.h"
 #include "driver/sdmmc_host.h"
 #include "led/circular_strip.h"
+#include "M5UnitSynth.h"
 
 #define TAG "LichuangDevBoard"
 
@@ -90,6 +91,7 @@ private:
     SensorBroker* sb_;
     UartDevice* uart_;
     CircularStrip* led_strip_;
+    M5UnitSynth* midi_;
 
     void InitializeI2c() {
         // Initialize I2C peripheral
@@ -129,8 +131,11 @@ private:
         scd4x_->get_serial_number(&s0, &s1, &s2);
         ESP_LOGI(TAG,"s0=0x%04x,s1=0x%04x,s2=0x%04x",s0,s1,s2);
         // scd4x_->start_periodic_measurement();
-        scd4x_->measure_single_shot();
-        sb_ = new SensorBroker();
+        if(s0 != 0 || s1 != 0 || s2 != 0)
+        {
+            scd4x_->measure_single_shot();
+            sb_ = new SensorBroker();
+        }
     }
 
     void InitializeSpi() {
@@ -151,6 +156,7 @@ private:
                 ResetWifiConfiguration();
             }
             app.ToggleChatState();
+            ESP_LOGI(TAG, "Chat state toggled");
         });
 
 #if CONFIG_USE_DEVICE_AEC
@@ -267,8 +273,14 @@ private:
         camera_ = new Esp32Camera(config);
     }    
     void InitializeUart() {
-        uart_ = new UartDevice(UART_TX_PIN, UART_RX_PIN, UART_DTR_PIN, 9600);
+        uart_ = new UartDevice(GPIO_NUM_NC, UART_RX_PIN, UART_DTR_PIN, 115200, UART_NUM_2);
         uart_->Initialize();
+        uart_->reg_receive_func(
+             [](void* arg, uint8_t *pBuffer, size_t size) {
+            auto self = (LichuangDevBoard *)arg;
+            for(int i=0;i<size;i++)
+                self->midi_->play(pBuffer[i]);
+        }, this);
     }
 
     void InitializeSdcard() {
@@ -497,9 +509,12 @@ const StripColor number8_8x8[8 * 8] = {
         led_strip_->SetAllColor(RGBToColor(5, 5, 5));
         // led_strip_->Blink(RGBToColor(123, 4, 10), 1000);
         // led_strip_->Breathe(RGBToColor(0, 0, 0),RGBToColor(0, 0, 50), 10);
-        led_strip_->Scroll(RGBToColor(59, 29, 54), RGBToColor(204, 141, 23), 2, 333);   // rgba(59, 29, 54, 1)   rrgba(204, 141, 23, 1)
+        led_strip_->Scroll(RGBToColor(59, 29, 54), RGBToColor(204, 141, 23), 2, 333);   // rgba(59, 29, 54, 1)   rgba(204, 141, 23, 1)
         // led_strip_->ShowImage(heart_8x8);
         // led_strip_->ShowImage(number8_8x8);
+    }
+    void InitializeMidi() {
+        midi_ = new M5UnitSynth(UART_TX_PIN);
     }
 public:
     LichuangDevBoard() : boot_button_(BOOT_BUTTON_GPIO) {
@@ -510,9 +525,10 @@ public:
         InitializeButtons();
         InitializeCamera();
         InitializeCmd();
-        // InitializeUart();
+        InitializeUart();
         InitializeSdcard();
-        IntializeLedStrip();
+        // IntializeLedStrip();
+        InitializeMidi();
         GetBacklight()->RestoreBrightness();
     }
 
