@@ -15,8 +15,6 @@ import os
 import sys
 import shutil
 import subprocess
-import argparse
-from pathlib import Path
 
 
 def ensure_dir(directory):
@@ -42,7 +40,7 @@ def build_assets(wakenet_model, text_font, emoji_collection, build_dir, final_di
         cmd.extend(["--wakenet_model", wakenet_path])
     
     if text_font != "none":
-        text_font_path = os.path.join("../../components/xiaozhi-fonts/build", f"{text_font}.bin")
+        text_font_path = os.path.join("../../components/78__xiaozhi-fonts/cbin", f"{text_font}.bin")
         cmd.extend(["--text_font", text_font_path])
     
     if emoji_collection != "none":
@@ -115,11 +113,13 @@ def main():
     print("开始构建多个 SPIFFS assets 分区...")
     print(f"输出目录: {final_dir}")
     
-    # Track successful builds
-    successful_builds = 0
+    # Calculate total combinations
     total_combinations = len(wakenet_models) * len(text_fonts) * len(emoji_collections)
     
-    # Build all combinations
+    # Track successful builds
+    successful_builds = 0
+    
+    # Build all combinations with emoji_collections
     for wakenet_model in wakenet_models:
         for text_font in text_fonts:
             for emoji_collection in emoji_collections:

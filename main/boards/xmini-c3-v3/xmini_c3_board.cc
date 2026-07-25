@@ -11,7 +11,7 @@
 #include "adc_battery_monitor.h"
 #include "press_to_talk_mcp_tool.h"
 
-#include <wifi_station.h>
+#include <wifi_manager.h>
 #include <esp_log.h>
 #include <esp_efuse_table.h>
 #include <driver/i2c_master.h>
@@ -43,11 +43,7 @@ private:
     }
 
     void InitializePowerSaveTimer() {
-#if CONFIG_USE_ESP_WAKE_WORD
         power_save_timer_ = new PowerSaveTimer(160, 300);
-#else
-        power_save_timer_ = new PowerSaveTimer(160, 60);
-#endif
         power_save_timer_->OnEnterSleepMode([this]() {
             GetDisplay()->SetPowerSaveMode(true);
         });
@@ -132,8 +128,10 @@ private:
     void InitializeButtons() {
         boot_button_.OnClick([this]() {
             auto& app = Application::GetInstance();
-            if (app.GetDeviceState() == kDeviceStateStarting && !WifiStation::GetInstance().IsConnected()) {
-                ResetWifiConfiguration();
+            // During startup (before connected), pressing BOOT enters config mode without reboot
+            if (app.GetDeviceState() == kDeviceStateStarting) {
+                EnterWifiConfigMode();
+                return;
             }
             if (!press_to_talk_tool_ || !press_to_talk_tool_->IsPressToTalkEnabled()) {
                 app.ToggleChatState();
@@ -192,11 +190,11 @@ public:
         return true;
     }
 
-    virtual void SetPowerSaveMode(bool enabled) override {
-        if (!enabled) {
+    virtual void SetPowerSaveLevel(PowerSaveLevel level) override {
+        if (level != PowerSaveLevel::LOW_POWER) {
             power_save_timer_->WakeUp();
         }
-        WifiBoard::SetPowerSaveMode(enabled);
+        WifiBoard::SetPowerSaveLevel(level);
     }
 };
 

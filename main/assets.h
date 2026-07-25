@@ -1,31 +1,19 @@
 #ifndef ASSETS_H
 #define ASSETS_H
 
-#include <map>
 #include <string>
 #include <functional>
+#include <memory>
 
 #include <cJSON.h>
 #include <esp_partition.h>
 #include <model_path.h>
+#include <map>
+#include <string>
 
-
-// All combinations of wakenet_model, text_font, emoji_collection can be found from the following url:
-// https://github.com/78/xiaozhi-fonts/releases/tag/assets
-
-#define ASSETS_PUHUI_COMMON_14_1                    "none-font_puhui_common_14_1-none.bin"
-#define ASSETS_XIAOZHI_WAKENET                      "wn9_nihaoxiaozhi_tts-none-none.bin"
-#define ASSETS_XIAOZHI_WAKENET_SMALL                "wn9s_nihaoxiaozhi-none-none.bin"
-#define ASSETS_XIAOZHI_PUHUI_COMMON_14_1            "wn9_nihaoxiaozhi_tts-font_puhui_common_14_1-none.bin"
-#define ASSETS_XIAOZHI_PUHUI_COMMON_16_4_EMOJI_32   "wn9_nihaoxiaozhi_tts-font_puhui_common_16_4-emojis_32.bin"
-#define ASSETS_XIAOZHI_PUHUI_COMMON_16_4_EMOJI_64   "wn9_nihaoxiaozhi_tts-font_puhui_common_16_4-emojis_64.bin"
-#define ASSETS_XIAOZHI_PUHUI_COMMON_20_4_EMOJI_64   "wn9_nihaoxiaozhi_tts-font_puhui_common_20_4-emojis_64.bin"
-#define ASSETS_XIAOZHI_PUHUI_COMMON_30_4_EMOJI_64   "wn9_nihaoxiaozhi_tts-font_puhui_common_30_4-emojis_64.bin"
-#define ASSETS_XIAOZHI_S_PUHUI_COMMON_14_1          "wn9s_nihaoxiaozhi-font_puhui_common_14_1-none.bin"
-#define ASSETS_XIAOZHI_S_PUHUI_COMMON_16_4_EMOJI_32 "wn9s_nihaoxiaozhi-font_puhui_common_16_4-emojis_32.bin"
-#define ASSETS_XIAOZHI_S_PUHUI_COMMON_20_4_EMOJI_32 "wn9s_nihaoxiaozhi-font_puhui_common_20_4-emojis_32.bin"
-#define ASSETS_XIAOZHI_S_PUHUI_COMMON_20_4_EMOJI_64 "wn9s_nihaoxiaozhi-font_puhui_common_20_4-emojis_64.bin"
-#define ASSETS_XIAOZHI_S_PUHUI_COMMON_30_4_EMOJI_64 "wn9s_nihaoxiaozhi-font_puhui_common_30_4-emojis_64.bin"
+#if HAVE_LVGL
+#include <spi_flash_mmap.h>
+#endif
 
 struct Asset {
     size_t size;
@@ -34,32 +22,68 @@ struct Asset {
 
 class Assets {
 public:
-    Assets(std::string default_assets_url);
+    static Assets& GetInstance() {
+        static Assets instance;
+        return instance;
+    }
     ~Assets();
 
     bool Download(std::string url, std::function<void(int progress, size_t speed)> progress_callback);
-    bool Apply();
+    bool Apply(bool refresh_display_theme = true);
+    bool GetAssetData(const std::string& name, void*& ptr, size_t& size);
 
     inline bool partition_valid() const { return partition_valid_; }
-    inline bool checksum_valid() const { return checksum_valid_; }
     inline std::string default_assets_url() const { return default_assets_url_; }
 
 private:
+    Assets();
     Assets(const Assets&) = delete;
     Assets& operator=(const Assets&) = delete;
 
     bool InitializePartition();
-    uint32_t CalculateChecksum(const char* data, uint32_t length);
-    bool GetAssetData(const std::string& name, void*& ptr, size_t& size);
+    void UnApplyPartition();
+    static bool FindPartition(Assets* assets);
+    static bool LoadSrmodelsFromIndex(Assets* assets, cJSON* root = nullptr);
+  
+    class AssetStrategy {
+    public:
+        virtual ~AssetStrategy() = default;
+        virtual bool Apply(Assets* assets, bool refresh_display_theme = true) = 0;
+        virtual bool InitializePartition(Assets* assets) = 0;
+        virtual void UnApplyPartition(Assets* assets) = 0;
+        virtual bool GetAssetData(Assets* assets, const std::string& name, void*& ptr, size_t& size) = 0;
+    };
+    
+    class LvglStrategy : public AssetStrategy {
+    public:
+        bool Apply(Assets* assets, bool refresh_display_theme = true) override;
+        bool InitializePartition(Assets* assets) override;
+        void UnApplyPartition(Assets* assets) override;
+        bool GetAssetData(Assets* assets, const std::string& name, void*& ptr, size_t& size) override;
+    private:
+        static uint32_t CalculateChecksum(const char* data, uint32_t length);
+        std::map<std::string, Asset> assets_;
+        esp_partition_mmap_handle_t mmap_handle_ = 0;
+        const char* mmap_root_ = nullptr;
+        bool checksum_valid_ = false;
+    };
+    
+    class EmoteStrategy : public AssetStrategy {
+    public:
+        bool Apply(Assets* assets, bool refresh_display_theme = true) override;
+        bool InitializePartition(Assets* assets) override;
+        void UnApplyPartition(Assets* assets) override;
+        bool GetAssetData(Assets* assets, const std::string& name, void*& ptr, size_t& size) override;
+    };
+    
+    // Strategy instance
+    std::unique_ptr<AssetStrategy> strategy_;
 
+protected:
     const esp_partition_t* partition_ = nullptr;
-    esp_partition_mmap_handle_t mmap_handle_ = 0;
-    const char* mmap_root_ = nullptr;
     bool partition_valid_ = false;
-    bool checksum_valid_ = false;
     std::string default_assets_url_;
     srmodel_list_t* models_list_ = nullptr;
-    std::map<std::string, Asset> assets_;
 };
 
 #endif

@@ -7,7 +7,6 @@
 #include "config.h"
 #include "led/single_led.h"
 
-#include <wifi_station.h>
 #include <esp_log.h>
 #include <driver/i2c_master.h>
 #include <esp_lcd_panel_vendor.h>
@@ -137,8 +136,9 @@ private:
 
         boot_button_.OnClick([this]() {
             auto& app = Application::GetInstance();
-            if (app.GetDeviceState() == kDeviceStateStarting && !WifiStation::GetInstance().IsConnected()) {
-                ResetWifiConfiguration();
+            if (app.GetDeviceState() == kDeviceStateStarting) {
+                EnterWifiConfigMode();
+                return;
             }
             gpio_set_level(BUILTIN_LED_GPIO, 1);
             app.ToggleChatState();
@@ -162,7 +162,7 @@ private:
     }
 
 public:
-    CompactWifiBoardLCD() :
+    CompactWifiBoardLCD() : WifiBoard(),
         boot_button_(BOOT_BUTTON_GPIO), touch_button_(TOUCH_BUTTON_GPIO), asr_button_(ASR_BUTTON_GPIO) {
         InitializeSpi();
         InitializeLcdDisplay();
